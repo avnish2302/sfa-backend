@@ -16,6 +16,8 @@ import showcaseRoutes from "./routes/showcaseRoutes.js";
 import menuRoutes from "./routes/menuRoutes.js";
 import assetAssignmentRoutes from "./routes/assetAssignmentRoutes.js";
 import promotionsRoutes from "./routes/promotionsRoutes.js";
+import collectionRoutes from "./routes/collectionRoutes.js";
+import checkoutRoutes from "./routes/checkoutRoutes.js";
 
 const app = express();           // create express instance
 
@@ -45,6 +47,8 @@ app.use("/api/showcase", showcaseRoutes)
 app.use("/api/menu", menuRoutes)
 app.use("/api/asset-assignment", assetAssignmentRoutes)
 app.use("/api/promotions", promotionsRoutes);
+app.use("/api/collection", collectionRoutes);
+app.use("/api/checkout", protect, checkoutRoutes);
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
