@@ -39,9 +39,20 @@ export const checkoutController = async (req, res) => {
   try {
     const { checkinId } = req.params;
 
-    await pool.query(
-      "UPDATE checkins SET checkout_time = NOW() WHERE id = ?",
+    // calculate cash collected
+    const [[cash]] = await pool.query(
+      `SELECT IFNULL(SUM(amount),0) AS total
+       FROM collection
+       WHERE checkin_id = ?`,
       [checkinId]
+    );
+
+    const collectedCash = cash.total;
+
+    await pool.query(
+      `INSERT INTO checkouts (checkin_id, collected_cash, checkout_time)
+       VALUES (?, ?, NOW())`,
+      [checkinId, collectedCash]
     );
 
     res.json({
@@ -52,4 +63,4 @@ export const checkoutController = async (req, res) => {
     console.error(error);
     res.status(500).json({ message: "Server error" });
   }
-};
+}
