@@ -27,7 +27,7 @@ export const login = async (req, res) => {
       { id: user.id, role: user.role },
       process.env.JWT_SECRET,            
       { expiresIn: "1d" },
-    );
+    )
     res.json({ token })
   } catch (error) {
   console.error("LOGIN ERROR:", error);
