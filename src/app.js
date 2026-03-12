@@ -17,6 +17,8 @@ import assetAssignmentRoutes from "./routes/assetAssignmentRoutes.js";
 import promotionsRoutes from "./routes/promotionsRoutes.js";
 import collectionRoutes from "./routes/collectionRoutes.js";
 import checkoutRoutes from "./routes/checkoutRoutes.js";
+import routeRoutes from "./routes/routeRoutes.js"
+import usersRoutes from "./routes/usersRoutes.js";
 
 const app = express(); // create express instance
 
@@ -47,6 +49,8 @@ app.use("/api/asset-assignment", assetAssignmentRoutes);
 app.use("/api/promotions", promotionsRoutes);
 app.use("/api/collection", collectionRoutes);
 app.use("/api/checkout", protect, checkoutRoutes);
+app.use("/api/routes", protect, routeRoutes)
+app.use("/api/users", protect, usersRoutes)
 
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {

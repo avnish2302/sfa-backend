@@ -42,3 +42,45 @@ export const savePromotions = async (req, res) => {
     res.status(500).json({ message: "Server error" });
   }
 };
+
+export const getPromotionsByCheckin = async (req, res) => {
+  try {
+    const { checkinId } = req.params;
+
+    const [rows] = await pool.query(
+      `SELECT start_date,end_date,party,category,brand,sku,scheme
+       FROM promotions
+       WHERE checkin_id = ?`,
+      [checkinId]
+    );
+
+    res.json(rows);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+
+export const getTotalPromotionBeforePunchOut = async (req, res) => {
+  try {
+    const { checkinId } = req.params;
+
+    const [rows] = await pool.query(`
+      SELECT 
+        p.party, 
+        p.category, 
+        p.brand, 
+        p.sku, 
+        p.start_date, 
+        p.end_date, 
+        p.scheme
+      FROM promotions p
+      WHERE p.checkin_id = ?
+    `, [checkinId]);
+
+    res.json(rows);
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  }
+};
