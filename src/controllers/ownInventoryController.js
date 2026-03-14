@@ -1,12 +1,22 @@
 import pool from "../config/db.js";
 
 export const saveOwnInventory = async (req, res) => {
+  const connection = await pool.getConnection();
+
   try {
     const { checkin_id, items } = req.body;
 
     if (!checkin_id || !items?.length) {
       return res.status(400).json({ message: "Invalid data" });
     }
+
+    await connection.beginTransaction();
+
+    // lock the checkin row
+    await connection.query(
+      "SELECT id FROM checkins WHERE id = ? FOR UPDATE",
+      [checkin_id]
+    );
 
     const values = items.map((item) => [
       checkin_id,
@@ -18,19 +28,29 @@ export const saveOwnInventory = async (req, res) => {
       item.bottlesCold || 0,
     ]);
 
-    await pool.query(
+    await connection.query(
       `INSERT INTO own_inventory
        (checkin_id, product_id, receipt, cases_warm, cases_cold, bottles_warm, bottles_cold)
        VALUES ?`,
-      [values],
+      [values]
     );
 
+    await connection.commit();
+
     res.json({ message: "Inventory saved successfully" });
+
   } catch (error) {
+    await connection.rollback();
     console.error(error);
     res.status(500).json({ message: "Server error" });
+  } finally {
+    connection.release();
   }
 };
+
+
+
+
 
 export const getOwnInventoryByCheckin = async (req, res) => {
   try {
@@ -47,7 +67,7 @@ export const getOwnInventoryByCheckin = async (req, res) => {
       FROM own_inventory oi
       JOIN products p ON oi.product_id = p.id
       WHERE oi.checkin_id = ?`,
-      [checkinId]
+      [checkinId],
     );
 
     res.json(rows);
@@ -57,24 +77,31 @@ export const getOwnInventoryByCheckin = async (req, res) => {
   }
 };
 
-
-export const getTotalInventoryBeforePunchOut = async (req, res) => {
+export const getInventoryBeforePunchOut = async (req, res) => {
   try {
-    const { checkinId } = req.params;
+    const userId = req.user.id;
 
-    const [rows] = await pool.query(`
+    const [rows] = await pool.query(
+      `
       SELECT 
-        p.product_name,
-        SUM(oi.receipt) as receipt,
-        SUM(oi.cases_warm) as cases_warm,
-        SUM(oi.cases_cold) as cases_cold,
-        SUM(oi.bottles_warm) as bottles_warm,
-        SUM(oi.bottles_cold) as bottles_cold
-      FROM own_inventory oi
-      JOIN products p ON oi.product_id = p.id
-      WHERE oi.checkin_id = ?
-      GROUP BY p.product_name
-    `, [checkinId]);
+  s.shop_name,
+  p.name AS product_name,
+  oi.receipt,
+  oi.cases_warm,
+  oi.cases_cold,
+  oi.bottles_warm,
+  oi.bottles_cold
+FROM own_inventory oi
+JOIN products p ON oi.product_id = p.id
+JOIN checkins c ON oi.checkin_id = c.id
+JOIN shops s ON c.shop_id = s.id
+JOIN punch_ins pi ON c.punch_in_id = pi.id
+WHERE pi.user_id = ?
+AND pi.is_active = TRUE
+ORDER BY s.shop_name;
+    `,
+      [userId],
+    );
 
     res.json(rows);
   } catch (error) {

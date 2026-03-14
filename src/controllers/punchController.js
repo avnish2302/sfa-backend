@@ -1,24 +1,45 @@
 import pool from "../config/db.js";
 
 export const punchIn = async (req, res) => {
+  const connection = await pool.getConnection();
+
   try {
-    const userId = req.user.id // from JWT      req.user was set by auth middleware
+    const userId = req.user.id;
     const { own_vehicle, vehicle_type, odometer_reading } = req.body;
 
-    const [activePunch] = await pool.query("SELECT id FROM punch_ins WHERE user_id = ? AND is_active = TRUE", [userId])
-    if (activePunch.length > 0) return res.status(400).json({ message: "Already punched in"})
+    await connection.beginTransaction();
 
-    // Insert new punch
-    const [result] = await pool.query(`INSERT INTO punch_ins (user_id, own_vehicle, vehicle_type, odometer_reading) VALUES (?, ?, ?, ?)`, [userId, own_vehicle, vehicle_type, odometer_reading])
+    const [activePunch] = await connection.query(
+      "SELECT id FROM punch_ins WHERE user_id = ? AND is_active = TRUE FOR UPDATE",
+      [userId]
+    );
+
+    if (activePunch.length > 0) {
+      await connection.rollback();
+      return res.status(400).json({ message: "Already punched in" });
+    }
+
+    const [result] = await connection.query(
+      `INSERT INTO punch_ins (user_id, own_vehicle, vehicle_type, odometer_reading)
+       VALUES (?, ?, ?, ?)`,
+      [userId, own_vehicle, vehicle_type, odometer_reading]
+    );
+
+    await connection.commit();
+
     res.status(201).json({
       message: "Punch in successful",
       punch_in_id: result.insertId,
-    })
+    });
+
   } catch (error) {
-    console.error(error)
-    res.status(500).json({ message: "Server error" })
+    await connection.rollback();
+    console.error(error);
+    res.status(500).json({ message: "Server error" });
+  } finally {
+    connection.release();
   }
-}
+};
 
 
 

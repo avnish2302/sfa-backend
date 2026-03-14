@@ -53,25 +53,28 @@ export const getCollectionByCheckin = async (req, res) => {
   }
 };
 
-export const getTotalCollectionBeforePunchOut = async (req, res) => {
+export const getCollectionBeforePunchOut = async (req, res) => {
   try {
-    const { checkinId } = req.params;
+    const userId = req.user.id;
 
-    const [rows] = await pool.query(
-      `
-      SELECT 
-        c.invoice_no, 
-        c.remark, 
-        c.payment_mode, 
-        SUM(c.amount) as total_amount
-      FROM collection c
-      WHERE c.checkin_id = ?
-      GROUP BY c.invoice_no, c.remark, c.payment_mode
-    `,
-      [checkinId],
-    );
+    const [rows] = await pool.query(`
+      SELECT
+  s.shop_name,
+  c.invoice_no,
+  c.remark,
+  c.payment_mode,
+  c.amount
+FROM collection c
+JOIN checkins ch ON c.checkin_id = ch.id
+JOIN shops s ON ch.shop_id = s.id
+JOIN punch_ins pi ON ch.punch_in_id = pi.id
+WHERE pi.user_id = ?
+AND pi.is_active = TRUE
+ORDER BY s.shop_name;
+    `,[userId]);
 
     res.json(rows);
+
   } catch (error) {
     console.error(error);
     res.status(500).json({ message: "Server error" });
